@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GrooveVision — Watch What You Listen To</title>
+  <meta name="description" content="Automatically opens the YouTube music video for whatever you're scrobbling to Last.fm. Works with Spotify, Apple Music, YouTube Music, and more.">
+  <meta property="og:title" content="GrooveVision — Watch What You Listen To">
+  <meta property="og:description" content="Automatically opens the YouTube music video for whatever you're scrobbling to Last.fm. Works with Spotify, Apple Music, YouTube Music, and more.">
+  <meta property="og:image" content="images/promo-tile.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="GrooveVision — Watch What You Listen To">
+  <meta name="twitter:description" content="Automatically opens the YouTube music video for whatever you're scrobbling to Last.fm. Works with Spotify, Apple Music, YouTube Music, and more.">
+  <meta name="twitter:image" content="images/promo-tile.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/16x16.png?v=2">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/48x48.png?v=2">
+  <link rel="apple-touch-icon" sizes="128x128" href="icons/128x128.png?v=2">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #FF4489;
+      --green-dim: rgba(255, 68, 137, 0.12);
+      --green-border: rgba(255, 68, 137, 0.3);
+      --gold: #FFD415;
+      --cyan: #32B8BB;
+      --rainbow: linear-gradient(90deg, #FF4489 0%, #FF8C42 28%, #FFD415 50%, #32B8BB 75%, #A855F7 100%);
+      --glow-sm: 0 0 18px rgba(255, 68, 137, 0.38);
+      --glow-md: 0 0 32px rgba(255, 68, 137, 0.55);
+      --bg: #0e0e0e;
+      --surface: #181818;
+      --surface-2: #242424;
+      --border: #2a2a2a;
+      --text: #fff;
+      --muted: #a7a7a7;
+      --radius: 12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a { color: var(--green); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    img { display: block; max-width: 100%; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(18, 18, 18, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      white-space: nowrap;
+      background: var(--rainbow);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-brand img { width: 28px; height: 28px; flex-shrink: 0; }
+
+    .nav-actions { display: flex; gap: 10px; align-items: center; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 40px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter 0.15s ease, transform 0.1s ease, background 0.15s ease, box-shadow 0.2s ease;
+      border: none;
+      text-decoration: none !important;
+      white-space: nowrap;
+    }
+
+    .btn:hover  { filter: brightness(1.12); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); filter: brightness(0.95); }
+
+    .btn-green  { background: var(--green); color: #000; box-shadow: var(--glow-sm); }
+    .btn-green:hover { box-shadow: var(--glow-md); }
+    .btn-ghost  { background: transparent; color: var(--text); border: 1px solid #3a3a3a; }
+    .btn-ghost:hover { background: var(--surface-2); border-color: #555; }
+
+    .btn-lg { padding: 14px 28px; font-size: 15px; }
+
+    /* ── Layout helpers ── */
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .section { padding: 88px 0; }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid var(--green-border);
+      padding: 4px 12px;
+      border-radius: 40px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .section-tag {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 12px;
+    }
+
+    h2.heading {
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.3px;
+      margin-bottom: 16px;
+    }
+
+    .subtext {
+      font-size: 17px;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 540px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 80px 0 72px;
+    }
+
+    .hero .container {
+      display: grid;
+      grid-template-columns: 1fr 1.35fr;
+      gap: 56px;
+      align-items: center;
+    }
+
+    .hero h1 {
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -1px;
+      margin-bottom: 22px;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      background: var(--rainbow);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--muted);
+      line-height: 1.75;
+      margin-bottom: 36px;
+    }
+
+    .hero-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .hero-media {
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 28px 96px rgba(0, 0, 0, 0.65), 0 0 0 1px var(--border), 0 0 56px rgba(255, 68, 137, 0.15);
+    }
+
+    .hero-media img { width: 100%; }
+
+    /* ── Features ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 52px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover { border-color: var(--green-border); box-shadow: 0 0 20px rgba(255, 68, 137, 0.08); }
+
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--green-dim);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 18px;
+    }
+
+    .card h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .tag-premium {
+      display: inline-block;
+      background: var(--green);
+      color: #000;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      letter-spacing: 0.3px;
+      vertical-align: middle;
+      margin-left: 4px;
+    }
+
+    /* ── How it works ── */
+    .hiw { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 40px;
+      margin-top: 52px;
+    }
+
+    .step { text-align: center; }
+
+    .step-num {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--green);
+      color: #000;
+      font-size: 22px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      box-shadow: var(--glow-sm);
+    }
+
+    .step h3 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .step p  { font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+    /* ── Screenshots ── */
+    .shots-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 52px;
+    }
+
+    .shot {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .shot img { width: 100%; }
+
+    .shot-caption {
+      padding: 12px 16px;
+      background: var(--surface-2);
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Pricing ── */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 680px;
+      margin-top: 52px;
+    }
+
+    .price-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 28px;
+    }
+
+    .price-card.featured {
+      border-color: var(--green);
+      background: linear-gradient(145deg, rgba(255, 68, 137, 0.08) 0%, var(--surface) 60%);
+      box-shadow: 0 0 36px rgba(255, 68, 137, 0.14);
+    }
+
+    .price-badge {
+      display: inline-block;
+      background: var(--green);
+      color: #000;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .price-card h3 { font-size: 20px; font-weight: 800; margin-bottom: 10px; }
+
+    .price-amount {
+      font-size: 40px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .price-note { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+
+    .price-list {
+      list-style: none;
+      margin-bottom: 28px;
+    }
+
+    .price-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      font-size: 14px;
+      color: var(--muted);
+      padding: 5px 0;
+    }
+
+    .price-list li::before {
+      content: '✓';
+      color: var(--green);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .price-card .btn { width: 100%; }
+
+    /* ── CTA ── */
+    .cta {
+      text-align: center;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255, 68, 137, 0.1) 0%, transparent 70%);
+      border-top: 1px solid var(--border);
+    }
+
+    .cta h2 { font-size: 42px; font-weight: 800; margin-bottom: 16px; letter-spacing: -0.5px; }
+    .cta p  { font-size: 17px; color: var(--muted); margin-bottom: 36px; }
+    .cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    footer a { color: var(--muted); transition: color 0.15s; }
+    footer a:hover { color: var(--green); text-decoration: none; }
+    .footer-links { display: flex; gap: 20px; justify-content: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .footer-note { font-size: 12px; color: #555; margin-top: 8px; }
+
+    /* ── Roadmap ── */
+    .roadmap-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-top: 52px;
+    }
+
+    .roadmap-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .roadmap-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      width: fit-content;
+    }
+
+    .roadmap-badge.next    { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); }
+    .roadmap-badge.planned { background: rgba(255,255,255,0.05); color: #888; border: 1px solid #333; }
+    .roadmap-badge.later   { background: rgba(255,255,255,0.03); color: #666; border: 1px solid #2a2a2a; }
+
+    .roadmap-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .roadmap-card p  { font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+    .roadmap-list {
+      list-style: none;
+      margin-top: 18px;
+    }
+
+    .roadmap-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      padding: 4px 0;
+    }
+
+    .roadmap-list li::before {
+      content: '→';
+      color: var(--green);
+      font-size: 11px;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    @media (max-width: 860px) {
+      .hero .container { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 40px; }
+      .features-grid { grid-template-columns: 1fr 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      .shots-grid { grid-template-columns: 1fr; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
+      .roadmap-grid { grid-template-columns: 1fr; }
+      h2.heading { font-size: 30px; }
+      .cta h2 { font-size: 30px; }
+    }
+
+    @media (max-width: 560px) {
+      nav {
+        padding: 12px 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .hero { padding: 48px 0 56px; }
+      .hero h1 { font-size: 34px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .section { padding: 64px 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Nav ── -->
+  <nav>
+    <div class="nav-brand">
+      <img src="icons/48x48.png?v=2" alt="GrooveVision icon">
+      GrooveVision
+    </div>
+    <div class="nav-actions">
+      <a href="#"
+         class="btn btn-ghost" target="_blank" rel="noopener noreferrer">
+        Add to Chrome
+      </a>
+      <!-- PREMIUM_DISABLED: purchase not currently available
+      <a href="https://catniplabs.lemonsqueezy.com/checkout/buy/922fa7b9-8f23-4060-b483-499b5c9aadc3"
+         class="btn btn-green" target="_blank" rel="noopener noreferrer">
+        Buy Premium
+      </a>
+      -->
+    </div>
+  </nav>
+
+  <!-- ── Hero ── -->
+  <header class="hero">
+    <div class="container">
+      <div>
+        <div class="eyebrow">Chrome Extension</div>
+        <h1>Watch <em>what</em><br>you listen to</h1>
+        <p>
+          GrooveVision automatically finds the YouTube music video for whatever
+          you're scrobbling to Last.fm — opening it in the background, muted.
+        </p>
+        <div class="hero-btns">
+          <a href="#"
+             class="btn btn-green btn-lg" target="_blank" rel="noopener noreferrer">
+            Add to Chrome — Free
+          </a>
+          <!-- PREMIUM_DISABLED: purchase not currently available
+          <a href="https://catniplabs.lemonsqueezy.com/checkout/buy/922fa7b9-8f23-4060-b483-499b5c9aadc3"
+             class="btn btn-ghost btn-lg" target="_blank" rel="noopener noreferrer">
+            Buy Premium — $1.99/mo
+          </a>
+          -->
+        </div>
+      </div>
+      <div class="hero-media">
+        <img src="images/all.jpg?v=2" alt="GrooveVision opening a YouTube video for the current track">
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Features ── -->
+  <section class="section">
+    <div class="container">
+      <div class="section-tag">Features</div>
+      <h2 class="heading">Everything you need,<br>nothing you don't</h2>
+      <p class="subtext">Set it up once and forget about it. GrooveVision runs quietly in the background.</p>
+      <div class="features-grid">
+
+        <div class="card">
+          <div class="card-icon">▶</div>
+          <h3>Automatic Video Match</h3>
+          <p>Start any song in any music app and the matching YouTube video opens in a background tab automatically — synced to your Last.fm scrobbles.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">🔇</div>
+          <h3>Muted by Default</h3>
+          <p>The YouTube tab stays muted so your music plays uninterrupted. Switch to the tab and unmute whenever you want the video's audio instead.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">⏭</div>
+          <h3>Skip Song? It Follows</h3>
+          <p>Change tracks and GrooveVision updates the YouTube tab automatically — no manual searching required.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">🌐</div>
+          <h3>Works With Any Music App</h3>
+          <p>Syncs via Last.fm scrobbles, so it works with Spotify, Apple Music, YouTube Music, Tidal, and anything else that scrobbles to Last.fm.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">🔑</div>
+          <h3>Your Own YouTube Key</h3>
+          <p>Connect your own free YouTube API key in about two minutes. Your searches stay private and you're never affected by other users hitting their limits.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">📌</div>
+          <h3>Custom Video Pinning <span class="tag-premium">Premium</span></h3>
+          <p>Found the perfect live performance or official video? Pin any YouTube URL to a song so GrooveVision always opens that exact video.</p>
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+          <div class="card-icon">🎤</div>
+          <h3>Support Your Favorite Artists</h3>
+          <p>Turn passive listening into real visual engagement through official videos, live performances, and creator content.</p>
+        </div>
+
+      </div>
+
+      <div class="section-tag" style="margin-top: 64px;">What's Next</div>
+      <h3 style="font-size: 26px; font-weight: 800; line-height: 1.2; margin-bottom: 12px;">Coming to GrooveVision</h3>
+      <p class="subtext">A few things actively in the works — roughly in the order they're coming.</p>
+      <div class="roadmap-grid">
+
+        <div class="roadmap-card">
+          <span class="roadmap-badge next">Up Next</span>
+          <h3>Vibe Modes</h3>
+          <p>Choose the mood and GrooveVision finds a video that matches the feel — not just the title. Great for background listening when you want the visuals to match the energy.</p>
+          <ul class="roadmap-list">
+            <li>Lo-Fi</li>
+            <li>Chill</li>
+            <li>Night Drive</li>
+            <li>Gym</li>
+            <li>Study</li>
+            <li>Cyberpunk</li>
+          </ul>
+        </div>
+
+        <div class="roadmap-card">
+          <span class="roadmap-badge next">Up Next</span>
+          <h3>Official Artist Channels</h3>
+          <p>YouTube is full of covers, lyric videos, and fan uploads. GrooveVision will prioritize results from an artist's Official Artist Channel so you get the real music video by default.</p>
+          <ul class="roadmap-list">
+            <li>Prefer verified artist channels over fan uploads</li>
+            <li>Fewer wrong-video mismatches on popular songs</li>
+            <li>Falls back to best available if no official video exists</li>
+          </ul>
+        </div>
+
+        <div class="roadmap-card">
+          <span class="roadmap-badge planned">In the Works</span>
+          <h3>Custom Start Timestamps</h3>
+          <p>YouTube videos often open with intros, countdowns, or silence before the music starts. Premium users will be able to set a custom start time per song so GrooveVision skips straight to the right moment every time.</p>
+          <ul class="roadmap-list">
+            <li>Set a start time for any song</li>
+            <li>Skips the intro every time the video opens</li>
+            <li>Works alongside custom video pinning</li>
+          </ul>
+        </div>
+
+        <div class="roadmap-card">
+          <span class="roadmap-badge later">On the Horizon</span>
+          <h3>Community Picks</h3>
+          <p>The algorithm doesn't always find the best video. Community Picks lets users surface and vote on the version everyone agrees is the right one for each song.</p>
+          <ul class="roadmap-list">
+            <li>Vote for the best video match</li>
+            <li>See what others are watching</li>
+            <li>Share synced playlists</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── How it works ── -->
+  <section class="section hiw">
+    <div class="container">
+      <div class="section-tag">How It Works</div>
+      <h2 class="heading">Up and running in minutes</h2>
+      <p class="subtext">Four quick steps from install to your first video.</p>
+      <div class="steps">
+
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Install the Extension</h3>
+          <p>Add GrooveVision to Chrome from the Web Store. No companion app required.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Enter Your Last.fm Username</h3>
+          <p>Open the extension popup and type in your Last.fm username. No OAuth, no login — just your username.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Add a YouTube API Key</h3>
+          <p>Create a free API key at Google Cloud Console in about two minutes. Paste it into the extension settings — one time, and you're done.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-num">4</div>
+          <h3>Turn On Sync &amp; Play</h3>
+          <p>Flip the sync toggle in the popup, start a song in any music app, and watch the matching YouTube video open automatically.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Screenshots ── -->
+  <section class="section">
+    <div class="container">
+      <div class="section-tag">Screenshots</div>
+      <h2 class="heading">Clean, minimal, out of your way</h2>
+      <p class="subtext">The popup shows what's playing and stays out of your workflow.</p>
+      <div class="shots-grid">
+        <div class="shot">
+          <img src="images/extension.jpg" alt="Extension popup showing now-playing track and sync toggle">
+          <div class="shot-caption">Now-playing view with one-tap sync toggle</div>
+        </div>
+        <div class="shot">
+          <img src="images/settings.jpg" alt="Extension settings panel showing Last.fm username and YouTube API key fields">
+          <div class="shot-caption">Simple one-time setup in settings</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Pricing ── -->
+  <section class="section" style="background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container">
+      <div class="section-tag">Pricing</div>
+      <h2 class="heading">Free to start,<br>Premium to unlock more</h2>
+      <p class="subtext">Core sync is completely free. Upgrade for extra control — cancel any time.</p>
+      <div class="pricing-grid">
+
+        <div class="price-card">
+          <h3>Free</h3>
+          <div class="price-amount">$0</div>
+          <div class="price-note">forever</div>
+          <ul class="price-list">
+            <li>Auto-open YouTube music videos</li>
+            <li>Play/pause sync with Last.fm</li>
+          </ul>
+          <a href="#"
+             class="btn btn-ghost" target="_blank" rel="noopener noreferrer">
+            Add to Chrome
+          </a>
+        </div>
+
+        <div class="price-card featured">
+          <div class="price-badge">Premium</div>
+          <h3>Premium</h3>
+          <div class="price-amount">$1.99</div>
+          <div class="price-note">per month</div>
+          <ul class="price-list">
+            <li>Everything in Free</li>
+            <li>Pin custom videos to any song</li>
+            <li>All future Premium features</li>
+          </ul>
+          <!-- PREMIUM_DISABLED: purchase not currently available
+          <a href="https://catniplabs.lemonsqueezy.com/checkout/buy/922fa7b9-8f23-4060-b483-499b5c9aadc3"
+             class="btn btn-green" target="_blank" rel="noopener noreferrer">
+            Buy Premium
+          </a>
+          -->
+          <span class="btn btn-ghost" style="cursor: default; opacity: 0.45; pointer-events: none;">
+            Not Currently Available
+          </span>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ── -->
+  <section class="section cta">
+    <div class="container">
+      <h2>Start listening with visuals</h2>
+      <p>Free to install. Works with any music app that scrobbles to Last.fm.</p>
+      <div class="cta-btns">
+        <a href="#"
+           class="btn btn-green btn-lg" target="_blank" rel="noopener noreferrer">
+          Add to Chrome — Free
+        </a>
+        <!-- PREMIUM_DISABLED: purchase not currently available
+        <a href="https://catniplabs.lemonsqueezy.com/checkout/buy/922fa7b9-8f23-4060-b483-499b5c9aadc3"
+           class="btn btn-ghost btn-lg" target="_blank" rel="noopener noreferrer">
+          Buy Premium — $1.99/mo
+        </a>
+        -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <div class="footer-links">
+      <a href="#" target="_blank" rel="noopener noreferrer">Chrome Web Store</a>
+      <!-- PREMIUM_DISABLED: purchase not currently available
+      <a href="https://catniplabs.lemonsqueezy.com/checkout/buy/922fa7b9-8f23-4060-b483-499b5c9aadc3"
+         target="_blank" rel="noopener noreferrer">Buy Premium</a>
+      -->
+      <a id="support-link" href="#">Support &amp; Feedback</a>
+    </div>
+    <p>&copy; 2026 GrooveVision. All rights reserved.</p>
+    <p class="footer-note">Not affiliated with Last.fm, Apple, or YouTube.</p>
+  </footer>
+
+  <script>
+    document.getElementById('support-link').addEventListener('click', function (e) {
+      e.preventDefault();
+      var u = 'wdparker93', d = 'gmail' + '.com';
+      window.location = 'mailto:' + u + '@' + d + '?subject=GrooveVision%20Support';
+    });
+  </script>
+</body>
+</html>
